@@ -11,6 +11,7 @@
 #include <iterator>
 #include <ctime>
 #include <cstdlib>
+#include <time.h>
 using namespace std;
 using namespace std::chrono_literals;
 
@@ -18,7 +19,10 @@ struct sSnakeSegment
 {
 	int x, y;
 };
-
+int start = clock();
+double diff = 0; 
+int masod = 7; //7 masodpercenkent eldonti, hogy tegyen-e le pokot vagy se
+int pok = 0; // 1 tegyen le pokot, kulonben ne (0 < pok < 6)
 int ScreenWidth = 120; //x of screen	
 int ScreenHeight = 45; //y of screen
 int FieldWidth = 20;
@@ -48,12 +52,33 @@ int main()
 	int coordx = 0, coordxBefore = 0;
 	int coordy = 0, coordyBefore = 0;
 	string KeyBefore = " ";
-
+	int pokX = 0, pokY = 0;
 
 	//mfw game loop
 	srand(time(0));
 	while (!Dead)
 	{
+		
+		diff = ((clock() - start) / (double)(CLOCKS_PER_SEC));//!!! nem jo
+		if (diff >= masod)
+		{
+			start = clock();
+			if (pokX == 0)
+			{
+				pok = 1 + (rand() % 6);
+				diff = 0;
+				if (pok == 1)//lesz pok
+				{
+					pokX = 1 + (rand() % 118);
+					pokY = 5 + (rand() % 34);
+				}
+			}
+			else
+			{
+				diff = 0;
+				pokY = pokX = 0;
+			}
+		}
 		//Timing && input
 		this_thread::sleep_for(75ms); //Game Tick
 		
@@ -95,9 +120,16 @@ int main()
 			if (screen[(*it).y * ScreenWidth + (*it).x - 1] == L'%')
 			{	
 				++Score;
-				snake.push_back({ (*it).y * ScreenWidth + (*it).x - 1, (*it).y });
-				FoodX = 1 + (rand() % 118);
+				snake.push_back({ (*it).y * ScreenWidth +(*it).x - 1, (*it).y }); // ezeknel nem tudom miert nem siman csak (*it)x, (*it).y), de
+				FoodX = 1 + (rand() % 118);										  // igy is mukodik, sot smoothabb is igy
 				FoodY = 5 + (rand() % 34);
+			}
+			else if (screen[(*it).y * ScreenWidth + (*it).x - 1] == L'#')
+			{
+				Score += 3;
+				snake.push_back({ (*it).y * ScreenWidth + (*it).x - 1, (*it).y });
+				diff = 0;
+				pokY = pokX = 0;
 			}
 			else if (screen[(*it).y * ScreenWidth + (*it).x - 1] != L' ')
 				Dead = true;
@@ -125,6 +157,13 @@ int main()
 				FoodX = 1 + (rand() % 118);
 				FoodY = 5 + (rand() % 34);
 			}
+			else if (screen[(*it).y * ScreenWidth + (*it).x + 1] == L'#')
+			{
+				Score += 3;
+				snake.push_back({ (*it).y * ScreenWidth + (*it).x + 1, (*it).y });
+				diff = 0;
+				pokY = pokX = 0;
+			}
 			else if (screen[(*it).y * ScreenWidth + (*it).x + 1] != L' ')
 				Dead = true;
 			coordx = (*it).x;
@@ -150,6 +189,13 @@ int main()
 				snake.push_back({ ((*it).y + 1) * ScreenWidth + (*it).x, (*it).y });
 				FoodX = 1 + (rand() % 118);
 				FoodY = 5 + (rand() % 34);
+			}
+			else if (screen[((*it).y - 1) * ScreenWidth + (*it).x] == L'#')
+			{
+				Score += 3;
+				snake.push_back({ ((*it).y + 1) * ScreenWidth + (*it).x, (*it).y });
+				diff = 0;
+				pokY = pokX = 0;
 			}
 			else if (screen[((*it).y - 1) * ScreenWidth + (*it).x] != L' ')
 				Dead = true;
@@ -177,7 +223,14 @@ int main()
 				FoodX = 1 + (rand() % 118);
 				FoodY = 5 + (rand() % 34);
 			}
-			else if (screen[((*it).y + 1) * ScreenWidth + (*it).x] != L'  ')
+			else if (screen[((*it).y + 1) * ScreenWidth + (*it).x] == L'#')
+			{
+				Score += 3;
+				snake.push_back({((*it).y - 1) * ScreenWidth + (*it).x, (*it).y });
+				diff = 0;
+				pokY = pokX = 0;
+			}
+			else if (screen[((*it).y + 1) * ScreenWidth + (*it).x] != L' ')
 				Dead = true;
 			coordx = (*it).x;
 			coordy = (*it).y;
@@ -224,6 +277,9 @@ int main()
 		screen[snake.front().y * ScreenWidth + snake.front().x] = Dead ? L'X' : L'@';
 		//Draw Food
 		screen[FoodY * ScreenWidth + FoodX] = L'%';
+		//Draw Snake
+		if (pokX != 0)
+			screen[pokY * ScreenWidth + pokX] = L'#';
 		WriteConsoleOutputCharacter(hConsole, screen, ScreenWidth * ScreenHeight, { 0,0 }, &dwBytesWritten);
 	}
 	while(1)
